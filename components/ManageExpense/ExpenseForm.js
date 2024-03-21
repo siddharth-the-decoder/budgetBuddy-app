@@ -1,32 +1,64 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import Input from "./Input";
 import { useState } from "react";
 import Button from "../UI/Button";
+import { getFormattedDate } from "../../util/date";
+import { GlobalStyles } from "../../constants/styles";
 
-function ExpenseForm({ submitButtonLabel, onCancel, onSubmit }) {
-  const [inputvalues, setInputValues] = useState({
-    amount: "",
-    date: "",
-    description: "",
+function ExpenseForm({ submitButtonLabel, onCancel, onSubmit, defaultValues }) {
+  const [inputs, setInputs] = useState({
+    amount: {
+      value: defaultValues ? defaultValues.amount.toString() : "",
+      isValid: true,
+    },
+    date: {
+      value: defaultValues ? getFormattedDate(defaultValues.date) : "",
+      isValid: true,
+    },
+    description: {
+      value: defaultValues ? defaultValues.description : "",
+      isValid: true,
+    },
   });
   function inputChangeHandler(inputIdentifier, enteredValue) {
-    setInputValues((curInputValues) => {
+    setInputs((curInputs) => {
       return {
-        ...curInputValues,
-        [inputIdentifier]: enteredValue,
+        ...curInputs,
+        [inputIdentifier]: { value: enteredValue, isValid: true },
       };
     });
   }
 
   function submitHandler() {
     const expeseData = {
-      amount: +inputvalues.amount,
-      date: new Date(inputvalues.date),
-      description: inputvalues.description,
+      amount: +inputs.amount.value,
+      date: new Date(inputs.date.value),
+      description: inputs.description.value,
     };
 
+    const amountIsValid = !isNaN(expeseData.amount) && expeseData.amount > 0;
+    const dateIsValid = expeseData.date.toString() !== "Invalid Date";
+    const descriptionIsValid = expeseData.description.trim().length > 0;
+
+    if (!amountIsValid || !dateIsValid || !descriptionIsValid) {
+      setInputs((curInputs) => {
+        return {
+          amount: { value: curInputs.amount.value, isValid: amountIsValid },
+          date: { value: curInputs.date.value, isValid: dateIsValid },
+          description: {
+            value: curInputs.description.value,
+            isValid: descriptionIsValid,
+          },
+        };
+      });
+      return;
+    }
     onSubmit(expeseData);
   }
+  const formIsInvalid =
+    !inputs.amount.isValid ||
+    !inputs.date.isValid ||
+    !inputs.description.isValid;
   return (
     <View style={styles.form}>
       <Text style={styles.title}>Your Expense</Text>
@@ -37,7 +69,7 @@ function ExpenseForm({ submitButtonLabel, onCancel, onSubmit }) {
           textInputConfig={{
             keyboardType: "decimal-pad",
             onChangeText: inputChangeHandler.bind(this, "amount"),
-            value: inputvalues["amount"],
+            value: inputs["amount"].value,
           }}
         />
         <Input
@@ -47,7 +79,7 @@ function ExpenseForm({ submitButtonLabel, onCancel, onSubmit }) {
             placeholder: "YYYY-MM-DD",
             maxLength: 10,
             onChangeText: inputChangeHandler.bind(this, "date"),
-            value: inputvalues["date"],
+            value: inputs["date"].value,
           }}
         />
       </View>
@@ -56,9 +88,14 @@ function ExpenseForm({ submitButtonLabel, onCancel, onSubmit }) {
         textInputConfig={{
           multiline: true,
           onChangeText: inputChangeHandler.bind(this, "description"),
-          value: inputvalues["description"],
+          value: inputs["description"].value,
         }}
       />
+      {formIsInvalid && (
+        <Text style={styles.errorText}>
+          Invalid input Values - please check your entered data!
+        </Text>
+      )}
       <View style={styles.buttons}>
         <Button mode="flat" onPress={onCancel} style={styles.button}>
           Cancel
@@ -99,5 +136,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+  },
+  errorText: {
+    textAlign: "center",
+    color: GlobalStyles.colors.error500,
+    margin: 8,
   },
 });
